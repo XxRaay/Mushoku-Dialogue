@@ -13,6 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
+import net.minecraft.client.gui.components.EditBox;
 import java.util.List;
 
 public class DialogueScreen extends Screen {
@@ -20,6 +21,12 @@ public class DialogueScreen extends Screen {
     private final Component fullText;
     private final int entityId;
     private final List<OpenDialoguePacket.ClientChoiceEntry> choices;
+    private final boolean hasInput;
+    private final Component inputPlaceholder;
+    private final String initialInput;
+    private final int maxInputLength;
+
+    private EditBox inputBox;
 
     private int revealedChars = 0;
     private int tickTimer = 0;
@@ -32,12 +39,21 @@ public class DialogueScreen extends Screen {
 
     private int hoveredChoice = -1;
 
-    public DialogueScreen(Component speaker, Component text, int entityId, List<OpenDialoguePacket.ClientChoiceEntry> choices) {
+    public DialogueScreen(Component speaker, Component text, int entityId, List<OpenDialoguePacket.ClientChoiceEntry> choices,
+                          boolean hasInput, Component inputPlaceholder, String initialInput, int maxInputLength) {
         super(Component.translatable("gui.mushokudialogue.title"));
         this.speaker = speaker;
         this.fullText = text;
         this.entityId = entityId;
         this.choices = choices;
+        this.hasInput = hasInput;
+        this.inputPlaceholder = inputPlaceholder != null ? inputPlaceholder : Component.empty();
+        this.initialInput = initialInput != null ? initialInput : "";
+        this.maxInputLength = maxInputLength > 0 ? maxInputLength : 32;
+    }
+
+    public DialogueScreen(Component speaker, Component text, int entityId, List<OpenDialoguePacket.ClientChoiceEntry> choices) {
+        this(speaker, text, entityId, choices, false, Component.empty(), "", 32);
     }
 
     @Override
@@ -46,10 +62,22 @@ public class DialogueScreen extends Screen {
         boxWidth = Math.min(480, this.width - 32);
         List<FormattedCharSequence> wrapped = this.font.split(this.fullText, boxWidth - 36);
         int textHeight = Math.max(wrapped.size() * 12, 24);
+        int inputAreaHeight = hasInput ? 32 : 0;
         int choicesHeight = choices.isEmpty() ? 0 : (choices.size() * 22 + 10);
-        boxHeight = 24 + textHeight + 10 + choicesHeight + 8;
+        boxHeight = 24 + textHeight + inputAreaHeight + choicesHeight + 8;
         boxX = (this.width - boxWidth) / 2;
         boxY = this.height - boxHeight - 16;
+
+        if (hasInput) {
+            int inputY = boxY + 24 + textHeight + 4;
+            this.inputBox = new EditBox(this.font, boxX + 18, inputY, boxWidth - 36, 20, inputPlaceholder);
+            this.inputBox.setMaxLength(maxInputLength);
+            this.inputBox.setValue(initialInput);
+            this.inputBox.setHint(inputPlaceholder);
+            this.inputBox.setTextColor(0xFFFFFFFF);
+            this.addRenderableWidget(this.inputBox);
+            this.setInitialFocus(this.inputBox);
+        }
     }
 
     @Override
@@ -112,6 +140,13 @@ public class DialogueScreen extends Screen {
         for (FormattedCharSequence line : wrappedLines) {
             graphics.drawString(this.font, line, boxX + 18, textY, 0xFFFFFFFF, true);
             textY += 12;
+        }
+
+        if (hasInput && inputBox != null) {
+            inputBox.render(graphics, mouseX, mouseY, partialTick);
+            if (inputBox.isFocused()) {
+                graphics.renderOutline(inputBox.getX() - 1, inputBox.getY() - 1, inputBox.getWidth() + 2, inputBox.getHeight() + 2, 0xFFFFD700);
+            }
         }
 
         // Choices
@@ -197,7 +232,8 @@ public class DialogueScreen extends Screen {
                 OpenDialoguePacket.ClientChoiceEntry entry = choices.get(hoveredChoice);
                 if (entry.enabled()) {
                     playClickSound(1.0f);
-                    NetworkManager.sendToServer(new SelectChoicePacket(entry.index()));
+                    String currentInput = inputBox != null ? inputBox.getValue() : "";
+                    NetworkManager.sendToServer(new SelectChoicePacket(entry.index(), currentInput));
                     return true;
                 } else {
                     playDeniedSound();
@@ -221,6 +257,21 @@ public class DialogueScreen extends Screen {
             return true;
         }
 
+        // If typing in input box, handle input keys and Enter submission
+        if (inputBox != null && inputBox.isFocused()) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER) {
+                for (OpenDialoguePacket.ClientChoiceEntry entry : choices) {
+                    if (entry.enabled()) {
+                        playClickSound(1.0f);
+                        String currentInput = inputBox.getValue();
+                        NetworkManager.sendToServer(new SelectChoicePacket(entry.index(), currentInput));
+                        return true;
+                    }
+                }
+            }
+            return super.keyPressed(keyCode, scanCode, modifiers);
+        }
+
         if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
             if (!typingComplete) {
                 typingComplete = true;
@@ -230,14 +281,15 @@ public class DialogueScreen extends Screen {
             }
         }
 
-        // Numeric keys 1..9
+        // Numeric keys 1..9 (only when input box is NOT focused)
         if (keyCode >= GLFW.GLFW_KEY_1 && keyCode <= GLFW.GLFW_KEY_9) {
             int selectedIndex = keyCode - GLFW.GLFW_KEY_1;
             if (selectedIndex < choices.size()) {
                 OpenDialoguePacket.ClientChoiceEntry entry = choices.get(selectedIndex);
                 if (entry.enabled()) {
                     playClickSound(1.0f);
-                    NetworkManager.sendToServer(new SelectChoicePacket(entry.index()));
+                    String currentInput = inputBox != null ? inputBox.getValue() : "";
+                    NetworkManager.sendToServer(new SelectChoicePacket(entry.index(), currentInput));
                     return true;
                 } else {
                     playDeniedSound();

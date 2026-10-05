@@ -74,11 +74,24 @@ public class DialogueManager {
         ACTIVE_SESSIONS.put(player.getUUID(), session);
 
         int entityId = entity != null ? entity.getId() : -1;
-        OpenDialoguePacket packet = new OpenDialoguePacket(node.speakerName(), node.text(), entityId, clientEntries);
+        OpenDialoguePacket packet = new OpenDialoguePacket(
+                node.speakerName(),
+                node.text(),
+                entityId,
+                clientEntries,
+                node.hasInput(),
+                node.inputPlaceholder(),
+                node.initialInput(),
+                node.maxInputLength()
+        );
         NetworkManager.sendToPlayer(player, packet);
     }
 
     public static void handleChoice(ServerPlayer player, int choiceIndex) {
+        handleChoice(player, choiceIndex, "");
+    }
+
+    public static void handleChoice(ServerPlayer player, int choiceIndex, String input) {
         ActiveDialogueSession session = ACTIVE_SESSIONS.get(player.getUUID());
         if (session == null) return;
 
@@ -101,6 +114,7 @@ public class DialogueManager {
             return;
         }
 
+        session.context().setInput(input != null ? input : "");
         chosen.action().execute(player, session.context());
     }
 

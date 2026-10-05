@@ -23,7 +23,7 @@ public class DialogueNetworking {
 
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, SelectChoicePacket.TYPE, SelectChoicePacket.STREAM_CODEC, (packet, context) -> {
             if (context.getPlayer() instanceof ServerPlayer sp) {
-                context.queue(() -> DialogueManager.handleChoice(sp, packet.choiceIndex()));
+                context.queue(() -> DialogueManager.handleChoice(sp, packet.choiceIndex(), packet.input()));
             }
         });
 

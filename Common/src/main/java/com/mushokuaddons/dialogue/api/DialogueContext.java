@@ -43,6 +43,16 @@ public class DialogueContext {
         this.currentNode = currentNode;
     }
 
+    private String input = "";
+
+    public String input() {
+        return input != null ? input : "";
+    }
+
+    public void setInput(String input) {
+        this.input = input != null ? input : "";
+    }
+
     public void set(String key, Object value) {
         data.put(key, value);
     }

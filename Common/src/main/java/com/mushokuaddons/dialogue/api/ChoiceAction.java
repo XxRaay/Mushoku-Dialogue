@@ -28,6 +28,15 @@ public interface ChoiceAction {
         return (player, ctx) -> action.accept(player);
     }
 
+    @FunctionalInterface
+    interface InputConsumer {
+        void accept(ServerPlayer player, DialogueContext context, String input);
+    }
+
+    static ChoiceAction runWithInput(InputConsumer action) {
+        return (player, context) -> action.accept(player, context, context.input());
+    }
+
     static ChoiceAction close() {
         return (player, context) -> com.mushokuaddons.dialogue.manager.DialogueManager.closeDialogue(player);
     }

@@ -18,14 +18,29 @@ public class DialogueNode {
     @Nullable
     private final ResourceLocation backgroundTexture;
 
+    private final boolean hasInput;
+    private final Component inputPlaceholder;
+    private final String initialInput;
+    private final int maxInputLength;
+
     public DialogueNode(String id, Component speakerName, Component text, List<DialogueChoice> choices,
-                        @Nullable Consumer<DialogueContext> onOpen, @Nullable ResourceLocation backgroundTexture) {
+                        @Nullable Consumer<DialogueContext> onOpen, @Nullable ResourceLocation backgroundTexture,
+                        boolean hasInput, Component inputPlaceholder, String initialInput, int maxInputLength) {
         this.id = id;
         this.speakerName = speakerName;
         this.text = text;
         this.choices = choices;
         this.onOpen = onOpen;
         this.backgroundTexture = backgroundTexture;
+        this.hasInput = hasInput;
+        this.inputPlaceholder = inputPlaceholder != null ? inputPlaceholder : Component.empty();
+        this.initialInput = initialInput != null ? initialInput : "";
+        this.maxInputLength = maxInputLength > 0 ? maxInputLength : 32;
+    }
+
+    public DialogueNode(String id, Component speakerName, Component text, List<DialogueChoice> choices,
+                        @Nullable Consumer<DialogueContext> onOpen, @Nullable ResourceLocation backgroundTexture) {
+        this(id, speakerName, text, choices, onOpen, backgroundTexture, false, Component.empty(), "", 32);
     }
 
     public String id() {
@@ -52,6 +67,22 @@ public class DialogueNode {
     @Nullable
     public ResourceLocation backgroundTexture() {
         return backgroundTexture;
+    }
+
+    public boolean hasInput() {
+        return hasInput;
+    }
+
+    public Component inputPlaceholder() {
+        return inputPlaceholder;
+    }
+
+    public String initialInput() {
+        return initialInput;
+    }
+
+    public int maxInputLength() {
+        return maxInputLength;
     }
 
     public static Builder builder(String id) {
@@ -107,13 +138,39 @@ public class DialogueNode {
             return this;
         }
 
+        private boolean hasInput = false;
+        private Component inputPlaceholder = Component.empty();
+        private String initialInput = "";
+        private int maxInputLength = 32;
+
+        public Builder input(Component placeholder, String initialValue, int maxLength) {
+            this.hasInput = true;
+            this.inputPlaceholder = placeholder != null ? placeholder : Component.empty();
+            this.initialInput = initialValue != null ? initialValue : "";
+            this.maxInputLength = maxLength > 0 ? maxLength : 32;
+            return this;
+        }
+
+        public Builder input(String placeholder, String initialValue, int maxLength) {
+            return input(Component.literal(placeholder), initialValue, maxLength);
+        }
+
+        public Builder input(Component placeholder) {
+            return input(placeholder, "", 32);
+        }
+
+        public Builder input(String placeholder) {
+            return input(Component.literal(placeholder), "", 32);
+        }
+
         public Builder background(ResourceLocation texture) {
             this.backgroundTexture = texture;
             return this;
         }
 
         public DialogueNode build() {
-            return new DialogueNode(id, speakerName, text, List.copyOf(choices), onOpen, backgroundTexture);
+            return new DialogueNode(id, speakerName, text, List.copyOf(choices), onOpen, backgroundTexture,
+                    hasInput, inputPlaceholder, initialInput, maxInputLength);
         }
     }
 }

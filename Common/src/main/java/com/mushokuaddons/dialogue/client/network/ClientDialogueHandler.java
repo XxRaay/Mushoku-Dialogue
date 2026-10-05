@@ -7,7 +7,8 @@ import net.minecraft.client.Minecraft;
 public class ClientDialogueHandler {
     public static void handleOpenDialogue(OpenDialoguePacket packet) {
         Minecraft mc = Minecraft.getInstance();
-        mc.setScreen(new DialogueScreen(packet.speaker(), packet.text(), packet.entityId(), packet.choices()));
+        mc.setScreen(new DialogueScreen(packet.speaker(), packet.text(), packet.entityId(), packet.choices(),
+                packet.hasInput(), packet.inputPlaceholder(), packet.initialInput(), packet.maxInputLength()));
     }
 
     public static void handleCloseDialogue() {
