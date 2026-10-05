@@ -4,19 +4,19 @@ import com.mushokuaddons.dialogue.client.network.ClientDialogueHandler;
 import com.mushokuaddons.dialogue.manager.DialogueManager;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
-import net.fabricmc.api.EnvType;
+import dev.architectury.utils.Env;
 import net.minecraft.server.level.ServerPlayer;
 
 public class DialogueNetworking {
     public static void register() {
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, OpenDialoguePacket.TYPE, OpenDialoguePacket.STREAM_CODEC, (packet, context) -> {
-            if (Platform.getEnv() == EnvType.CLIENT) {
+            if (Platform.getEnvironment() == Env.CLIENT) {
                 context.queue(() -> ClientDialogueHandler.handleOpenDialogue(packet));
             }
         });
 
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, CloseDialoguePacket.TYPE, CloseDialoguePacket.STREAM_CODEC, (packet, context) -> {
-            if (Platform.getEnv() == EnvType.CLIENT) {
+            if (Platform.getEnvironment() == Env.CLIENT) {
                 context.queue(ClientDialogueHandler::handleCloseDialogue);
             }
         });
@@ -27,9 +27,9 @@ public class DialogueNetworking {
             }
         });
 
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, CloseDialoguePacket.TYPE, CloseDialoguePacket.STREAM_CODEC, (packet, context) -> {
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, CloseDialogueC2SPacket.TYPE, CloseDialogueC2SPacket.STREAM_CODEC, (packet, context) -> {
             if (context.getPlayer() instanceof ServerPlayer sp) {
-                context.queue(() -> DialogueManager.closeDialogue(sp));
+                context.queue(() -> DialogueManager.handleClientClosed(sp));
             }
         });
     }

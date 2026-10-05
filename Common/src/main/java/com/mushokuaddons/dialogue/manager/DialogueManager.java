@@ -109,6 +109,10 @@ public class DialogueManager {
         NetworkManager.sendToPlayer(player, new CloseDialoguePacket());
     }
 
+    public static void handleClientClosed(ServerPlayer player) {
+        ACTIVE_SESSIONS.remove(player.getUUID());
+    }
+
     public static void onPlayerDisconnect(UUID playerId) {
         ACTIVE_SESSIONS.remove(playerId);
     }

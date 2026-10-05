@@ -1,6 +1,6 @@
 package com.mushokuaddons.dialogue.client.gui;
 
-import com.mushokuaddons.dialogue.network.CloseDialoguePacket;
+import com.mushokuaddons.dialogue.network.CloseDialogueC2SPacket;
 import com.mushokuaddons.dialogue.network.OpenDialoguePacket;
 import com.mushokuaddons.dialogue.network.SelectChoicePacket;
 import dev.architectury.networking.NetworkManager;
@@ -201,9 +201,14 @@ public class DialogueScreen extends Screen {
     }
 
     @Override
+    public void onClose() {
+        NetworkManager.sendToServer(new CloseDialogueC2SPacket());
+        super.onClose();
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            NetworkManager.sendToServer(new CloseDialoguePacket());
             this.onClose();
             return true;
         }

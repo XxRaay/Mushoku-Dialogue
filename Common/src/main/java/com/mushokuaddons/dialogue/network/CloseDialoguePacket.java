@@ -6,7 +6,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 public record CloseDialoguePacket() implements CustomPacketPayload {
-    public static final Type<CloseDialoguePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("mushokudialogue", "close_dialogue"));
+    public static final Type<CloseDialoguePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("mushokudialogue", "s2c_close_dialogue"));
 
     public static final StreamCodec<ByteBuf, CloseDialoguePacket> STREAM_CODEC = StreamCodec.unit(new CloseDialoguePacket());
 
