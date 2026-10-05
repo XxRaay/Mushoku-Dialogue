@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "mushokudialogue",
+  "version": "${version}",
+  "name": "Mushoku Dialogue",
+  "description": "Dialogue and NPC interaction API library for Minecraft 1.21.1",
+  "authors": [
+    "XxRaay"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.mushokuaddons.dialogue.fabric.MushokuDialogueFabric"
+    ],
+    "client": [
+      "com.mushokuaddons.dialogue.fabric.client.MushokuDialogueFabricClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.2",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*",
+    "architectury": "*"
+  }
+}

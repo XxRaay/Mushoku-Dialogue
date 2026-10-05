@@ -1,0 +1,67 @@
+plugins {
+    id "com.github.johnrengelman.shadow" version "8.1.1"
+}
+
+architectury {
+    platformSetupLoomIde()
+    neoForge()
+}
+
+loom {
+    accessWidenerPath = project(":Common").loom.accessWidenerPath
+}
+
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentNeoForge.extendsFrom common
+}
+
+dependencies {
+    neoForge "net.neoforged:neoforge:${rootProject.neo_version}"
+
+    common(project(path: ":Common", configuration: "namedElements")) { transitive false }
+    shadowCommon(project(path: ":Common", configuration: "transformProductionNeoForge")) { transitive = false }
+
+    modApi "dev.architectury:architectury-neoforge:${rootProject.architectury_version}"
+}
+
+processResources {
+    def expandProps = [
+        "version": project.version,
+        "loader_version_range": rootProject.loader_version_range,
+        "mod_license": rootProject.mod_license,
+        "mod_id": rootProject.mod_id,
+        "mod_version": rootProject.mod_version,
+        "mod_name": rootProject.mod_name,
+        "mod_authors": rootProject.mod_authors,
+        "mod_description": rootProject.mod_description,
+        "neo_version_range": rootProject.neo_version_range,
+        "minecraft_version_range": rootProject.minecraft_version_range
+    ]
+    inputs.properties expandProps
+
+    filesMatching("META-INF/neoforge.mods.toml") {
+        expand expandProps
+    }
+}
+
+shadowJar {
+    exclude "fabric.mod.json"
+    exclude "architectury.common.json"
+
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier.set("dev-shadow")
+}
+
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveClassifier.set(null)
+}
+
+jar {
+    archiveClassifier.set("dev")
+}
