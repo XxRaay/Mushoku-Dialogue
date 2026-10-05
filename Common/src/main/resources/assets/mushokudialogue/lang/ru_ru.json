@@ -1,5 +1,7 @@
 {
+  "gui.mushokudialogue.title": "Диалог",
   "dialogue.mushokudialogue.close": "Закрыть",
   "dialogue.mushokudialogue.next": "Далее",
-  "dialogue.mushokudialogue.back": "Назад"
+  "dialogue.mushokudialogue.back": "Назад",
+  "dialogue.mushokudialogue.skip_hint": "Нажмите [Пробел] или [Enter], чтобы пропустить печать"
 }

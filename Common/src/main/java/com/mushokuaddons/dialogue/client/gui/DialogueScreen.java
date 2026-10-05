@@ -37,7 +37,7 @@ public class DialogueScreen extends Screen {
     private int hoveredChoice = -1;
 
     public DialogueScreen(Component speaker, Component text, int entityId, List<OpenDialoguePacket.ClientChoiceEntry> choices) {
-        super(Component.literal("Dialogue"));
+        super(Component.translatable("gui.mushokudialogue.title"));
         this.speaker = speaker;
         this.fullText = text;
         this.entityId = entityId;

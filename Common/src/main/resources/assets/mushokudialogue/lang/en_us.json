@@ -1,5 +1,7 @@
 {
+  "gui.mushokudialogue.title": "Dialogue",
   "dialogue.mushokudialogue.close": "Close",
   "dialogue.mushokudialogue.next": "Next",
-  "dialogue.mushokudialogue.back": "Back"
+  "dialogue.mushokudialogue.back": "Back",
+  "dialogue.mushokudialogue.skip_hint": "Press [Space] or [Enter] to skip typing"
 }
