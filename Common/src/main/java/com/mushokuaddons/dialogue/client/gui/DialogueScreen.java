@@ -38,6 +38,9 @@ public class DialogueScreen extends Screen {
     private int boxY = 0;
 
     private int hoveredChoice = -1;
+    private int scrollOffset = 0;
+    private int visibleChoicesCount = 0;
+    private boolean isDraggingScroll = false;
 
     public DialogueScreen(Component speaker, Component text, int entityId, List<OpenDialoguePacket.ClientChoiceEntry> choices,
                           boolean hasInput, Component inputPlaceholder, String initialInput, int maxInputLength) {
@@ -63,10 +66,17 @@ public class DialogueScreen extends Screen {
         List<FormattedCharSequence> wrapped = this.font.split(this.fullText, boxWidth - 36);
         int textHeight = Math.max(wrapped.size() * 12, 24);
         int inputAreaHeight = hasInput ? 32 : 0;
-        int choicesHeight = choices.isEmpty() ? 0 : (choices.size() * 22 + 10);
+
+        int maxPossibleChoices = Math.max(2, Math.min(5, (this.height - 110 - textHeight - inputAreaHeight) / 22));
+        visibleChoicesCount = Math.min(choices.size(), Math.max(1, maxPossibleChoices));
+        int choicesHeight = choices.isEmpty() ? 0 : (visibleChoicesCount * 22 + 10);
+
         boxHeight = 24 + textHeight + inputAreaHeight + choicesHeight + 8;
         boxX = (this.width - boxWidth) / 2;
         boxY = this.height - boxHeight - 16;
+
+        int maxScroll = Math.max(0, choices.size() - visibleChoicesCount);
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
 
         if (hasInput) {
             int inputY = boxY + 24 + textHeight + 4;
@@ -154,15 +164,21 @@ public class DialogueScreen extends Screen {
         Component tooltipToRender = null;
 
         if (!choices.isEmpty()) {
-            int choicesStartY = boxY + boxHeight - (choices.size() * 22) - 8;
+            int choicesStartY = boxY + boxHeight - (visibleChoicesCount * 22) - 8;
             graphics.fill(boxX + 16, choicesStartY - 6, boxX + boxWidth - 16, choicesStartY - 5, 0x448B6B38);
 
-            for (int i = 0; i < choices.size(); i++) {
+            boolean hasScrollBar = choices.size() > visibleChoicesCount;
+            int scrollbarWidth = 6;
+            int choiceWidth = hasScrollBar ? (boxWidth - 32 - scrollbarWidth - 6) : (boxWidth - 32);
+            int choiceX = boxX + 16;
+
+            for (int vi = 0; vi < visibleChoicesCount; vi++) {
+                int i = vi + scrollOffset;
+                if (i >= choices.size()) break;
+
                 OpenDialoguePacket.ClientChoiceEntry entry = choices.get(i);
-                int choiceY = choicesStartY + (i * 22);
+                int choiceY = choicesStartY + (vi * 22);
                 int choiceHeight = 20;
-                int choiceWidth = boxWidth - 32;
-                int choiceX = boxX + 16;
 
                 boolean isHovered = mouseX >= choiceX && mouseX <= choiceX + choiceWidth &&
                                     mouseY >= choiceY && mouseY <= choiceY + choiceHeight;
@@ -191,6 +207,37 @@ public class DialogueScreen extends Screen {
                 }
 
                 graphics.drawString(this.font, fullChoiceStr, choiceX + 8, choiceY + 6, textCol, true);
+            }
+
+            // Scrollbar rendering
+            if (hasScrollBar) {
+                int scrollTrackX = boxX + boxWidth - 16 - scrollbarWidth;
+                int scrollTrackY = choicesStartY;
+                int scrollTrackHeight = visibleChoicesCount * 22 - 2;
+
+                // Track background
+                graphics.fill(scrollTrackX, scrollTrackY, scrollTrackX + scrollbarWidth, scrollTrackY + scrollTrackHeight, 0xFF141210);
+                graphics.renderOutline(scrollTrackX, scrollTrackY, scrollbarWidth, scrollTrackHeight, 0xFF4A3A22);
+
+                // Thumb
+                int maxScroll = choices.size() - visibleChoicesCount;
+                int thumbH = Math.max(10, (scrollTrackHeight * visibleChoicesCount) / choices.size());
+                int thumbY = scrollTrackY + (int) ((float) scrollOffset / maxScroll * (scrollTrackHeight - thumbH));
+
+                boolean isThumbHovered = mouseX >= scrollTrackX - 2 && mouseX <= scrollTrackX + scrollbarWidth + 2 &&
+                                         mouseY >= thumbY && mouseY <= thumbY + thumbH;
+                int thumbColor = (isDraggingScroll || isThumbHovered) ? 0xFFFFD700 : 0xFF8B6B38;
+                int thumbBorder = (isDraggingScroll || isThumbHovered) ? 0xFFFFE898 : 0xFF5C4729;
+
+                graphics.fill(scrollTrackX + 1, thumbY + 1, scrollTrackX + scrollbarWidth - 1, thumbY + thumbH - 1, thumbColor);
+                graphics.renderOutline(scrollTrackX, thumbY, scrollbarWidth, thumbH, thumbBorder);
+
+                if (scrollOffset > 0) {
+                    graphics.drawString(this.font, "▲", scrollTrackX - 1, scrollTrackY - 9, 0xFFD4AF37, false);
+                }
+                if (scrollOffset < maxScroll) {
+                    graphics.drawString(this.font, "▼", scrollTrackX - 1, scrollTrackY + scrollTrackHeight + 2, 0xFFD4AF37, false);
+                }
             }
         }
 
@@ -228,6 +275,21 @@ public class DialogueScreen extends Screen {
                 return true;
             }
 
+            // Scrollbar track / thumb click
+            if (choices.size() > visibleChoicesCount) {
+                int scrollbarWidth = 6;
+                int scrollTrackX = boxX + boxWidth - 16 - scrollbarWidth;
+                int choicesStartY = boxY + boxHeight - (visibleChoicesCount * 22) - 8;
+                int scrollTrackHeight = visibleChoicesCount * 22 - 2;
+
+                if (mouseX >= scrollTrackX - 3 && mouseX <= scrollTrackX + scrollbarWidth + 3 &&
+                    mouseY >= choicesStartY && mouseY <= choicesStartY + scrollTrackHeight) {
+                    isDraggingScroll = true;
+                    updateScrollFromMouse(mouseY, choicesStartY, scrollTrackHeight);
+                    return true;
+                }
+            }
+
             if (hoveredChoice >= 0 && hoveredChoice < choices.size()) {
                 OpenDialoguePacket.ClientChoiceEntry entry = choices.get(hoveredChoice);
                 if (entry.enabled()) {
@@ -242,6 +304,49 @@ public class DialogueScreen extends Screen {
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (choices.size() > visibleChoicesCount) {
+            if (scrollY > 0) {
+                if (scrollOffset > 0) {
+                    scrollOffset--;
+                    return true;
+                }
+            } else if (scrollY < 0) {
+                int maxScroll = choices.size() - visibleChoicesCount;
+                if (scrollOffset < maxScroll) {
+                    scrollOffset++;
+                    return true;
+                }
+            }
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (isDraggingScroll && choices.size() > visibleChoicesCount) {
+            int choicesStartY = boxY + boxHeight - (visibleChoicesCount * 22) - 8;
+            int scrollTrackHeight = visibleChoicesCount * 22 - 2;
+            updateScrollFromMouse(mouseY, choicesStartY, scrollTrackHeight);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        isDraggingScroll = false;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private void updateScrollFromMouse(double mouseY, int trackY, int trackH) {
+        int maxScroll = choices.size() - visibleChoicesCount;
+        if (maxScroll <= 0) return;
+        double relY = Math.max(0, Math.min(trackH, mouseY - trackY));
+        scrollOffset = Math.max(0, Math.min(maxScroll, (int) Math.round((relY / trackH) * maxScroll)));
     }
 
     @Override
@@ -272,12 +377,39 @@ public class DialogueScreen extends Screen {
             return super.keyPressed(keyCode, scanCode, modifiers);
         }
 
+        // Arrow keys / Page keys to scroll choices when input is not focused
+        if (choices.size() > visibleChoicesCount) {
+            if (keyCode == GLFW.GLFW_KEY_UP || keyCode == GLFW.GLFW_KEY_PAGE_UP) {
+                if (scrollOffset > 0) {
+                    scrollOffset--;
+                    return true;
+                }
+            } else if (keyCode == GLFW.GLFW_KEY_DOWN || keyCode == GLFW.GLFW_KEY_PAGE_DOWN) {
+                int maxScroll = choices.size() - visibleChoicesCount;
+                if (scrollOffset < maxScroll) {
+                    scrollOffset++;
+                    return true;
+                }
+            }
+        }
+
         if (keyCode == GLFW.GLFW_KEY_SPACE || keyCode == GLFW.GLFW_KEY_ENTER) {
             if (!typingComplete) {
                 typingComplete = true;
                 revealedChars = fullText.getString().length();
                 playClickSound(1.2f);
                 return true;
+            } else if (keyCode == GLFW.GLFW_KEY_ENTER && hoveredChoice >= 0 && hoveredChoice < choices.size()) {
+                OpenDialoguePacket.ClientChoiceEntry entry = choices.get(hoveredChoice);
+                if (entry.enabled()) {
+                    playClickSound(1.0f);
+                    String currentInput = inputBox != null ? inputBox.getValue() : "";
+                    NetworkManager.sendToServer(new SelectChoicePacket(entry.index(), currentInput));
+                    return true;
+                } else {
+                    playDeniedSound();
+                    return true;
+                }
             }
         }
 
